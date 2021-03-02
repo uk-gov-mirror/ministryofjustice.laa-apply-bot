@@ -34,8 +34,8 @@ describe SlackApplybot::Commands::Helm, :vcr do
     end
 
     context 'when the command is unsupported' do
-      let(:command) { 'delete' }
-      let(:unsupported_command_response) { 'You called `helm` with `delete`. This is not supported.' }
+      let(:command) { 'destroy' }
+      let(:unsupported_command_response) { 'You called `helm` with `destroy`. This is not supported.' }
       it 'returns the expected message' do
         expect(message: user_input, channel: channel).to respond_with_slack_message(unsupported_command_response)
       end
@@ -51,9 +51,64 @@ describe SlackApplybot::Commands::Helm, :vcr do
 
     context 'when the command is tidy' do
       let(:command) { 'tidy' }
-      let(:command_response) { "```ap1234\nap2345```" }
+
       it 'returns the expected message' do
         expect(message: user_input, channel: channel).to respond_with_slack_message(tidy_return)
+      end
+    end
+
+    context 'when the command is delete' do
+      context 'but no release or OTP is provided' do
+        let(:command) { 'delete' }
+        let(:command_response) do
+          'Unable to delete - insufficient data, please call as `helm delete name-of-release 000000`'
+        end
+        it 'returns the expected message' do
+          expect(message: user_input, channel: channel).to respond_with_slack_message(command_response)
+        end
+      end
+
+      context 'and no OTP is provided' do
+        let(:command) { 'delete ap1234' }
+        let(:command_response) { 'OTP password not provided, please call as `helm delete name-of-release 000000`' }
+        it 'returns the expected message' do
+          expect(message: user_input, channel: channel).to respond_with_slack_message(command_response)
+        end
+      end
+
+      context 'and no OTP is provided' do
+        let(:command) { 'delete ap1234' }
+        let(:command_response) { 'OTP password not provided, please call as `helm delete name-of-release 000000`' }
+        it 'returns the expected message' do
+          expect(message: user_input, channel: channel).to respond_with_slack_message(command_response)
+        end
+      end
+
+      context 'when OTP is provided' do
+        before do
+          allow_any_instance_of(User).to receive(:encrypted_2fa_secret).and_return(encrypted_secret)
+          allow_any_instance_of(Encryption::Service).to receive(:decrypt).with(:any).and_return('123456789')
+          allow_any_instance_of(ROTP::TOTP).to receive(:verify).with('123456').and_return(valid_token?)
+          allow(::Helm::Delete).to receive(:call).with('ap1234').and_return(true)
+        end
+        let(:encrypted_secret) { Encryption::Service.encrypt('secret') }
+        let(:command) { 'delete ap1234 123456' }
+
+        context 'and it is correct' do
+          let(:command_response) { 'ap1234 deleted' }
+          let(:valid_token?) { true }
+          it 'returns the expected message' do
+            expect(message: user_input, channel: channel).to respond_with_slack_message(command_response)
+          end
+        end
+
+        context 'but it is incorrect' do
+          let(:command_response) { 'OTP password did not match, please check your authenticator app' }
+          let(:valid_token?) { false }
+          it 'returns the expected message' do
+            expect(message: user_input, channel: channel).to respond_with_slack_message(command_response)
+          end
+        end
       end
     end
   end
