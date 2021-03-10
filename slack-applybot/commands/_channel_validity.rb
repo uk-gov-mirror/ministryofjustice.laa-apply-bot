@@ -23,10 +23,10 @@ module ChannelValidity
     ENV['ALLOWED_CHANNEL_LIST'].include?(channel_name)
   end
 
-  # def channel_is_not_dm?
-  #   @channel_info = SendSlackMessage.new.conversations_info(channel: @data.channel)
-  #   @channel_info['channel']['is_im']&.eql?(false)
-  # end
+  def channel_is_not_dm?
+    @channel_info = SendSlackMessage.new.conversations_info(channel: @data.channel)
+    @channel_info['channel']['is_im']&.eql?(false)
+  end
 
   def error_message
     ERROR_MESSAGE.sub('|USERNAME|', @data.user)
