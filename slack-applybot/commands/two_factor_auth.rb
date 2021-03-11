@@ -4,20 +4,27 @@ module SlackApplybot
       require 'rotp'
       require 'rqrcode'
 
-      command '2fa setup' do |client, data, _match|
+      command '2fa' do |client, data, match|
         @client = client
         @data = data
+        @user = user
         raise ChannelValidity::PublicError.new(message: error_message, channel: @data.channel) unless channel_is_valid?
 
         client.typing(channel: data.channel)
-        channel = data.channel
-        if channel_is_not_dm?
-          message_text = "I've sent you a DM, we probably shouldn't be talking about this in public!"
-          client.say(channel: channel, text: message_text)
-          channel = client.web_client.conversations_open(users: data['user'])['channel']['id']
-        end
+        case match['expression']&.downcase
+        when 'setup'
+          channel = data.channel
+          if channel_is_not_dm?
+            message_text = "I've sent you a DM, we probably shouldn't be talking about this in public!"
+            client.say(channel: channel, text: message_text)
+            channel = client.web_client.conversations_open(users: data['user'])['channel']['id']
+          end
 
-        send_qr_message(channel)
+          send_qr_message(channel)
+        else
+          message = "You called `2fa` with `#{match['expression']}`. This is not supported."
+          client.say(channel: data.channel, text: message)
+        end
       end
 
       class << self

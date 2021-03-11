@@ -24,9 +24,10 @@ RSpec.describe SlackApplybot::Commands::TwoFactorAuth do
   end
   let(:channel) { 'channel' }
   let(:is_direct_message?) { false }
+  let(:command) { 'setup' }
 
   describe '#setup' do
-    let(:user_input) { "#{SlackRubyBot.config.user} 2fa setup" }
+    let(:user_input) { "#{SlackRubyBot.config.user} 2fa #{command}" }
     let!(:client) { SlackRubyBot::App.new.send(:client) }
     let(:message_hook) { SlackRubyBot::Hooks::Message.new }
     let(:params) { Hashie::Mash.new(text: user_input, channel: channel, user: 'user') }
@@ -40,10 +41,11 @@ RSpec.describe SlackApplybot::Commands::TwoFactorAuth do
     end
 
     context 'the user is in a public, valid channel' do
+      let(:expected_message) { "I've sent you a DM, we probably shouldn't be talking about this in public!" }
       let(:expected_hash) do
         {
           channel: channel,
-          text: "I've sent you a DM, we probably shouldn't be talking about this in public!"
+          text: expected_message
         }
       end
 
@@ -51,6 +53,16 @@ RSpec.describe SlackApplybot::Commands::TwoFactorAuth do
         expect(client).to receive(:typing)
         expect(client).to receive(:say).with(expected_hash)
         message_hook.call(client, params)
+      end
+
+      context 'when the command is unsupported' do
+        let(:command) { 'cancel' }
+        let(:expected_message) { 'You called `2fa` with `cancel`. This is not supported.' }
+        it 'returns the expected message' do
+          expect(client).to receive(:typing)
+          expect(client).to receive(:say).with(expected_hash)
+          message_hook.call(client, params)
+        end
       end
     end
 
