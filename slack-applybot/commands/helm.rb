@@ -27,7 +27,7 @@ module SlackApplybot
 
       class << self
         include ChannelValidity
-        include TwoFactorAuth
+        include TwoFactorAuthShared
         include UserCommand
 
         def process_delete(match)
@@ -41,10 +41,6 @@ module SlackApplybot
           else
             'OTP password did not match, please check your authenticator app'
           end
-        end
-
-        def validate_otp_part(otp)
-          validate(user, otp) if otp.match(/\d*/)
         end
       end
     end
