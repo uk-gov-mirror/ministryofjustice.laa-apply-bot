@@ -21,6 +21,9 @@ module SlackApplybot
           end
 
           send_qr_message(channel)
+        when /^confirm/
+          message = process_confirmation(match)
+          client.say(channel: data.channel, text: message)
         else
           message = "You called `2fa` with `#{match['expression']}`. This is not supported."
           client.say(channel: data.channel, text: message)
@@ -29,7 +32,19 @@ module SlackApplybot
 
       class << self
         include ChannelValidity
+        include TwoFactorAuthShared
         include UserCommand
+
+        def process_confirmation(match)
+          parts = match['expression'].split - ['confirm']
+          if parts.empty?
+            'OTP password not provided, please call as `2fa confirm 000000`'
+          elsif validate_otp_part(parts[0])
+            'OTP has been successfully configured'
+          else
+            'OTP password did not match, please check your authenticator app'
+          end
+        end
 
         def send_qr_message(channel)
           user.otp_secret = ROTP::Base32.random if user.encrypted_2fa_secret.nil?
