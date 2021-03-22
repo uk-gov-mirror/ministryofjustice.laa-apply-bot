@@ -43,13 +43,20 @@ module SlackApplybot
         name: 'helm',
         desc: '`@apply-bot helm <instruction>` e.g. `@apply-bot helm list`',
         long_desc: 'This will run a helm command against the UAT helm kubernetes cluster ' \
-                   'currently supported instructions are: `list`, `tidy`'
+                   'currently supported instructions are: `list`, `tidy` & `delete` ' \
+                   'delete will need to be followed by a 2fa code, see `help 2fa`'
       },
       {
         name: 'github',
         desc: '`@apply-bot github <instruction>` e.g. `@apply-bot github link <your github name>`',
         long_desc: 'This will run a command that links your current slack account ' \
-                   'with a github account, currently supported instruction is: `link`'
+                     'with a github account, currently supported instruction is: `link`'
+      },
+      {
+        name: '2fa',
+        desc: '`@apply-bot 2fa <instruction>` e.g. `@apply-bot 2fa setup`',
+        long_desc: 'This will enable two-factor authentication for you to issue potentially ' \
+                   'destructive commands, currently supported instructions are: `setup`, `confirm`'
       }
     ].freeze
 
