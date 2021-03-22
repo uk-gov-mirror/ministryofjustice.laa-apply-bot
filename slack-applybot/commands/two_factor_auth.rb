@@ -13,21 +13,15 @@ module SlackApplybot
         client.typing(channel: data.channel)
         case match['expression']&.downcase
         when 'setup'
-          channel = data.channel
-          if channel_is_not_dm?
-            message_text = "I've sent you a DM, we probably shouldn't be talking about this in public!"
-            client.say(channel: channel, text: message_text)
-            channel = client.web_client.conversations_open(users: data['user'])['channel']['id']
-          end
-
-          send_qr_message(channel)
+          send_qr_message(user_dm_channel(client))
+          message = "I've sent you a DM, we probably shouldn't be talking about this in public!" if channel_is_not_dm?
         when /^confirm/
-          message = process_confirmation(match)
-          client.say(channel: data.channel, text: message)
+          client.say(channel: user_dm_channel(client), text: process_confirmation(match))
+          message = "I've sent you a DM, we probably shouldn't be talking about this in public!" if channel_is_not_dm?
         else
           message = "You called `2fa` with `#{match['expression']}`. This is not supported."
-          client.say(channel: data.channel, text: message)
         end
+        client.say(channel: data.channel, text: message) if message
       end
 
       class << self

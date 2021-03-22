@@ -61,49 +61,67 @@ RSpec.describe SlackApplybot::Commands::TwoFactorAuth do
   describe '#confirm' do
     let(:user_input) { "#{SlackRubyBot.config.user} 2fa #{command} #{otp_code}" }
     let(:command) { 'confirm' }
+    context 'when the message is a DM to the bot' do
+      let(:channel) { 'A0000B1CDEF' }
+      let(:is_direct_message?) { true }
 
-    context 'but no OTP is provided' do
-      let(:otp_code) { '' }
-      let(:expected_message) do
-        'OTP password not provided, please call as `2fa confirm 000000`'
+      context 'but no OTP is provided' do
+        let(:otp_code) { '' }
+        let(:expected_message) do
+          'OTP password not provided, please call as `2fa confirm 000000`'
+        end
+
+        it 'returns the expected message' do
+          expect(client).to receive(:typing)
+          expect(client).to receive(:say).with(expected_hash)
+          message_hook.call(client, params)
+        end
       end
 
-      it 'returns the expected message' do
-        expect(client).to receive(:typing)
-        expect(client).to receive(:say).with(expected_hash)
-        message_hook.call(client, params)
+      context 'when OTP is provided' do
+        before do
+          allow_any_instance_of(User).to receive(:encrypted_2fa_secret).and_return(encrypted_secret)
+          allow_any_instance_of(Encryption::Service).to receive(:decrypt).with(:any).and_return('123456789')
+          allow_any_instance_of(ROTP::TOTP).to receive(:verify).with('123456').and_return(valid_token?)
+        end
+        let(:encrypted_secret) { Encryption::Service.encrypt('secret') }
+        let(:otp_code) { '123456' }
+
+        context 'and it is correct' do
+          let(:expected_message) { 'OTP has been successfully configured' }
+          let(:valid_token?) { true }
+
+          it 'returns the expected message' do
+            expect(client).to receive(:typing)
+            expect(client).to receive(:say).with(expected_hash)
+            message_hook.call(client, params)
+          end
+        end
+
+        context 'but it is incorrect' do
+          let(:expected_message) { 'OTP password did not match, please check your authenticator app' }
+          let(:valid_token?) { false }
+
+          it 'returns the expected message' do
+            expect(client).to receive(:typing)
+            expect(client).to receive(:say).with(expected_hash)
+            message_hook.call(client, params)
+          end
+        end
       end
     end
 
-    context 'when OTP is provided' do
-      before do
-        allow_any_instance_of(User).to receive(:encrypted_2fa_secret).and_return(encrypted_secret)
-        allow_any_instance_of(Encryption::Service).to receive(:decrypt).with(:any).and_return('123456789')
-        allow_any_instance_of(ROTP::TOTP).to receive(:verify).with('123456').and_return(valid_token?)
+    context 'when the message is in a public, allowed channel' do
+      let(:expected_message) { "I've sent you a DM, we probably shouldn't be talking about this in public!" }
+      let(:otp_code) { '' }
+      let(:dm_hash) do
+        { channel: 'A0000B1CDEF', text: 'OTP password not provided, please call as `2fa confirm 000000`' }
       end
-      let(:encrypted_secret) { Encryption::Service.encrypt('secret') }
-      let(:otp_code) { '123456' }
-
-      context 'and it is correct' do
-        let(:expected_message) { 'OTP has been successfully configured' }
-        let(:valid_token?) { true }
-
-        it 'returns the expected message' do
-          expect(client).to receive(:typing)
-          expect(client).to receive(:say).with(expected_hash)
-          message_hook.call(client, params)
-        end
-      end
-
-      context 'but it is incorrect' do
-        let(:expected_message) { 'OTP password did not match, please check your authenticator app' }
-        let(:valid_token?) { false }
-
-        it 'returns the expected message' do
-          expect(client).to receive(:typing)
-          expect(client).to receive(:say).with(expected_hash)
-          message_hook.call(client, params)
-        end
+      it 'starts typing, sends a DM and then replies in the public channel' do
+        expect(client).to receive(:typing)
+        expect(client).to receive(:say).with(expected_hash)
+        expect(client).to receive(:say).with(dm_hash)
+        message_hook.call(client, params)
       end
     end
   end
