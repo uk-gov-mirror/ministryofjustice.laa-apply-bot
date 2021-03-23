@@ -13,7 +13,12 @@ module SlackApplybot
         client.typing(channel: data.channel)
         case match['expression']&.downcase
         when 'setup'
-          send_qr_message(user_dm_channel(client))
+          user_dm = user_dm_channel(client)
+          if user_has_github_linked?
+            send_qr_message(user_dm)
+          else
+            send_dm_to_link_github(user_dm)
+          end
           message = "I've sent you a DM, we probably shouldn't be talking about this in public!" if channel_is_not_dm?
         when /^confirm/
           client.say(channel: user_dm_channel(client), text: process_confirmation(match))
@@ -38,6 +43,11 @@ module SlackApplybot
           else
             'OTP password did not match, please check your authenticator app'
           end
+        end
+
+        def send_dm_to_link_github(channel)
+          message = 'You need to link your github account before you can setup 2FA'
+          @client.say(channel: channel, text: message)
         end
 
         def send_qr_message(channel)

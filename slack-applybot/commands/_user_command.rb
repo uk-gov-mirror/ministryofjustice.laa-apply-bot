@@ -6,4 +6,8 @@ module UserCommand
   def user_dm_channel(client)
     client.web_client.conversations_open(users: user)['channel']['id']
   end
+
+  def user_has_github_linked?
+    user.github_id.present?
+  end
 end

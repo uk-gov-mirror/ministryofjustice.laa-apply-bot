@@ -42,17 +42,39 @@ RSpec.describe SlackApplybot::Commands::TwoFactorAuth do
     context 'the user is in a direct message channel' do
       let(:is_direct_message?) { true }
 
-      it 'starts typing' do
-        expect(message: user_input, channel: 'channel').to start_typing(channel: 'channel')
+      context 'when the user has not connected github' do
+        let(:dm_hash) do
+          { channel: 'A0000B1CDEF', text: 'You need to link your github account before you can setup 2FA' }
+        end
+
+        it 'starts typing, sends a DM and then replies in the public channel' do
+          expect(client).to receive(:typing)
+          expect(client).to receive(:say).with(dm_hash)
+          message_hook.call(client, params)
+        end
+      end
+
+      context 'when the user has connected github' do
+        before { allow_any_instance_of(User).to receive(:github_id).and_return('123456') }
+
+        it 'starts typing, sends a DM and then replies in the public channel' do
+          expect(client).to receive(:typing)
+          expect_any_instance_of(SendSlackMessage).to receive(:upload_file)
+          message_hook.call(client, params)
+        end
       end
     end
 
     context 'the user is in a public, valid channel' do
       let(:expected_message) { "I've sent you a DM, we probably shouldn't be talking about this in public!" }
+      let(:dm_hash) do
+        { channel: 'A0000B1CDEF', text: 'You need to link your github account before you can setup 2FA' }
+      end
 
       it 'responds with a warning message' do
         expect(client).to receive(:typing)
         expect(client).to receive(:say).with(expected_hash)
+        expect(client).to receive(:say).with(dm_hash)
         message_hook.call(client, params)
       end
     end
